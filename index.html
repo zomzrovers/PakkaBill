@@ -201,7 +201,7 @@ footer{margin-top:28px;font-size:13px;color:var(--ink-2)}
     <div><b>Weeks later</b>File made, no proper bill</div>
     <div><b>Returned</b>By the Finance Convener</div>
     <div><b>Summer</b>Signatures all over again</div>
-    <div><b>End of Aug</b>Money back · <span class="days">165 days</span></div>
+    <div><b>End of Aug</b>Money back after <span class="days">165 days</span></div>
   </div>
 </div>
 
@@ -823,11 +823,11 @@ function renderVerdict(animate) {
   const amt = num(b.amount);
   $("#verdict").innerHTML = `<div class="vhead"><div>
       <div class="vendor">${esc(b.vendorName || "Unnamed vendor")}</div>
-      <div class="vmeta">${esc(b.description || "No description")}${b.date ? " · " + esc(nice(b.date)) : ""}</div>
+      <div class="vmeta">${esc(b.description || "No description")}${b.date ? ", " + esc(nice(b.date)) : ""}</div>
       <div class="amt">${amt ? rupee(amt) : "₹ —"}</div></div>
       <div class="stamp ${r.verdict}${changed ? " land" : ""}">${word}<small>${sub}</small></div></div>
     <p class="vsum">${SUMMARY[r.verdict]}</p>` +
-    (issues.length ? `<ul class="issues">` + issues.map(i => `<li class="${i.sev}"><div class="why">${esc(i.why)}</div><div class="fix"><b>Fix it now:</b> ${esc(i.fix)}</div><span class="src">${i.sev === "block" ? "Will send the file back" : "Risky"} · ${SOURCE[i.source]}</span></li>`).join("") + `</ul>` : "");
+    (issues.length ? `<ul class="issues">` + issues.map(i => `<li class="${i.sev}"><div class="why">${esc(i.why)}</div><div class="fix"><b>Fix it now:</b> ${esc(i.fix)}</div><span class="src">${i.sev === "block" ? "Will send the file back." : "Risky."} ${SOURCE[i.source]}.</span></li>`).join("") + `</ul>` : "");
   return r;
 }
 F.addEventListener("input", () => renderVerdict()); F.addEventListener("change", () => renderVerdict());
@@ -917,7 +917,7 @@ function renderPacket() {
   } else {
     $("#claims").innerHTML = c.map(x => {
       const [w] = STAMP[x.verdict];
-      return `<div class="billrow"><div><div class="v">${esc(x.bill.vendorName || "Unnamed vendor")}</div><div class="d">${esc(x.bill.description || "")}</div><div class="m">Paid by ${esc(x.bill.claimant || "?")}${x.bill.date ? ", " + esc(nice(x.bill.date)) : ""}${x.issues.length ? ` · ${x.issues.length} issue${x.issues.length > 1 ? "s" : ""}` : ""}</div></div>
+      return `<div class="billrow"><div><div class="v">${esc(x.bill.vendorName || "Unnamed vendor")}</div><div class="d">${esc(x.bill.description || "")}</div><div class="m">Paid by ${esc(x.bill.claimant || "?")}${x.bill.date ? ", " + esc(nice(x.bill.date)) : ""}${x.issues.length ? `. ${x.issues.length} issue${x.issues.length > 1 ? "s" : ""} to fix` : ""}</div></div>
         <div class="r"><span class="a">${rupee(num(x.bill.amount))}</span><span class="pill ${x.verdict}">${w}</span><button class="link" data-edit="${x.id}">Open</button></div></div>`;
     }).join("") + `<p class="fileline">${fileLine(c)}</p>`;
     $$("[data-edit]").forEach(b => b.onclick = () => { const x = S.claims.find(c => c.id === b.dataset.edit); editingId = x.id; show("check"); fillForm(x.bill); });
