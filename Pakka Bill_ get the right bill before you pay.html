@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pakka Bill: get the right bill before you pay</title>
+<style>
+:root{
+  --bg:#f6f3ec; --card:#fffdf8; --ink:#1d1b16; --muted:#6b665b; --line:#e3ddd0;
+  --green:#1f6b45; --green-bg:#e4f1e8; --amber:#8a5a00; --amber-bg:#fbefd5; --red:#a12a20; --red-bg:#f8e1dd;
+  --accent:#23395b; --radius:14px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans",sans-serif}
+.wrap{max-width:720px;margin:0 auto;padding:16px 14px 90px}
+header h1{font-size:26px;margin:6px 0 2px;letter-spacing:-.3px}
+header h1 span{color:var(--green)}
+header p{margin:0;color:var(--muted);font-size:14.5px}
+.story{margin:12px 0 4px;padding:10px 12px;border-left:3px solid var(--accent);background:#eef1f6;border-radius:0 10px 10px 0;font-size:14px;color:#2b3445}
+nav{position:sticky;top:0;z-index:5;background:var(--bg);padding:10px 0 8px;display:flex;gap:6px;overflow-x:auto}
+nav button{flex:1 0 auto;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:9px 14px;font:inherit;font-size:14.5px;cursor:pointer;color:var(--ink)}
+nav button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+section{display:none} section.on{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:14px;margin:12px 0}
+h2{font-size:19px;margin:4px 0 6px} h3{font-size:15.5px;margin:12px 0 6px}
+.hint{color:var(--muted);font-size:13.5px;margin:2px 0 8px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 12px;font:inherit;font-size:14px;cursor:pointer}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+ol.check{padding-left:0;list-style:none;margin:6px 0;counter-reset:c}
+ol.check li{counter-increment:c;display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-top:1px dashed var(--line)}
+ol.check li:first-child{border-top:0}
+ol.check li::before{content:counter(c);min-width:24px;height:24px;border-radius:50%;background:var(--ink);color:#fff;font-size:13px;display:grid;place-items:center;margin-top:1px}
+ol.check li.done{color:var(--muted);text-decoration:line-through}
+ol.check li.done::before{background:var(--green)}
+.say{background:#f3efe4;border-radius:10px;padding:10px 12px;margin-top:8px;font-size:14.5px}
+.say b{display:block;font-size:12px;letter-spacing:.4px;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:0;background:var(--ink);color:#fff;border-radius:10px;padding:10px 14px;font:inherit;font-size:14.5px;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.small{padding:7px 10px;font-size:13.5px}
+.btn:disabled{opacity:.5;cursor:default}
+label{display:block;font-size:13px;color:var(--muted);margin:8px 0 3px}
+input[type=text],input[type=date],input[type=number],select,textarea{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:15px;background:#fff;color:var(--ink)}
+textarea{min-height:110px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
+@media (max-width:480px){.grid2{grid-template-columns:1fr}}
+.tick{display:flex;gap:8px;align-items:center;font-size:14.5px;color:var(--ink);margin:8px 0}
+.tick input{width:18px;height:18px}
+details{border-top:1px solid var(--line);padding-top:6px;margin-top:8px}
+summary{cursor:pointer;font-weight:600;padding:6px 0}
+.verdict{border-radius:var(--radius);padding:14px;margin:12px 0;border:1px solid}
+.verdict .big{font-size:21px;font-weight:700}
+.v-PAKKA{background:var(--green-bg);border-color:#bcdcc6;color:var(--green)}
+.v-RISKY{background:var(--amber-bg);border-color:#efd7a3;color:var(--amber)}
+.v-NOT_CLAIMABLE{background:var(--red-bg);border-color:#efc1ba;color:var(--red)}
+.issue{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:8px;color:var(--ink)}
+.issue .t{font-weight:600}
+.issue .fix{margin-top:4px}
+.tag{display:inline-block;font-size:11.5px;border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:1px;border:1px solid var(--line);color:var(--muted);font-weight:500}
+.tag.block{background:var(--red-bg);color:var(--red);border-color:#efc1ba}
+.tag.warn{background:var(--amber-bg);color:var(--amber);border-color:#efd7a3}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{text-align:left;padding:7px 6px;border-top:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:600;border-top:0}
+.pill{font-size:12px;border-radius:999px;padding:2px 8px;white-space:nowrap}
+.p-PAKKA{background:var(--green-bg);color:var(--green)} .p-RISKY{background:var(--amber-bg);color:var(--amber)} .p-NOT_CLAIMABLE{background:var(--red-bg);color:var(--red)}
+.pass{color:var(--green);font-weight:600} .fail{color:var(--red);font-weight:600}
+.steps{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.step{display:flex;gap:10px;align-items:center;font-size:14.5px}
+.dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--line);flex:none}
+.step.done .dot{background:var(--green);border-color:var(--green)}
+.step.now .dot{background:var(--amber);border-color:var(--amber)}
+.step.now{font-weight:600}
+.muted{color:var(--muted)} .small{font-size:13px}
+.toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:9px 14px;border-radius:10px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:1}
+pre.out{white-space:pre-wrap;background:#f3efe4;border-radius:10px;padding:10px;font-size:12.5px;max-height:260px;overflow:auto}
+.kpi{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0}
+.kpi div{flex:1 1 120px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.kpi b{display:block;font-size:20px}
+.claim{display:flex;gap:10px;justify-content:space-between;padding:10px 0;border-top:1px solid var(--line)}
+.cside{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex:none}
+.kpi div{flex:1 1 90px}
+nav button{padding:9px 12px}
+footer{color:var(--muted);font-size:12.5px;margin-top:20px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Pakka<span>Bill</span></h1>
+  <p>Get the right bill before you walk away from the counter.</p>
+  <div class="story">In March 2026 our club (ELS, IIT Kanpur) paid ₹4,000 for an open-mic slot in Lucknow. We came back with a UPI screenshot, not a bill. The packet bounced, and the money came back in late August. Every mistake we made was fixable at the counter and unfixable two weeks later.</div>
+</header>
+
+<nav id="tabs">
+  <button data-t="pay" class="on">Before you pay</button>
+  <button data-t="check">Check a bill</button>
+  <button data-t="packet">Packet</button>
+  <button data-t="evals">Evals</button>
+</nav>
+
+<!-- 1. BEFORE YOU PAY -->
+<section id="pay" class="on">
+  <div class="card">
+    <h2>What do I ask for?</h2>
+    <p class="hint">Pick three things. You get a short checklist and a line to say to the vendor.</p>
+    <h3>Paying for</h3>
+    <div class="chips" data-g="spend">
+      <button class="chip" data-v="performance">Performance / registration fee</button>
+      <button class="chip" data-v="food">Food / snacks</button>
+      <button class="chip" data-v="printing">Printing / flex</button>
+      <button class="chip" data-v="travel">Cab / train / bus</button>
+      <button class="chip" data-v="shop">Shop purchase</button>
+      <button class="chip" data-v="online">Online order</button>
+    </div>
+    <h3>Vendor</h3>
+    <div class="chips" data-g="vendor">
+      <button class="chip" data-v="registered">Proper shop (has GST)</button>
+      <button class="chip" data-v="unregistered">Small vendor / dhaba</button>
+      <button class="chip" data-v="organiser">Event organiser, not sure</button>
+    </div>
+    <h3>Paying by</h3>
+    <div class="chips" data-g="mode">
+      <button class="chip" data-v="upi">UPI</button>
+      <button class="chip" data-v="cash">Cash</button>
+      <button class="chip" data-v="card">Card</button>
+    </div>
+  </div>
+  <div class="card" id="payOut" hidden>
+    <h2>At the counter</h2>
+    <ol class="check" id="payList"></ol>
+    <div class="say"><b>Say this</b><span id="sayHi"></span></div>
+    <div class="say"><b>Or in English</b><span id="sayEn"></span></div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn" id="copyPay">Copy for the volunteer's WhatsApp</button>
+      <button class="btn ghost" id="goCheck">I've got the bill → check it</button>
+    </div>
+  </div>
+</section>
+
+<!-- 2. CHECK A BILL -->
+<section id="check">
+  <div class="card">
+    <h2>Check a bill</h2>
+    <p class="hint">Try our real case first, or enter your own bill.</p>
+    <div class="row">
+      <button class="btn small" id="demoBad">Our Lucknow bill (what went wrong)</button>
+      <button class="btn small ghost" id="demoGood">Same bill, done right</button>
+      <button class="btn small ghost" id="clearBill">Clear</button>
+    </div>
+    <div id="aiBox" hidden>
+      <details open>
+        <summary>Read it from a photo or text (AI)</summary>
+        <p class="hint">The AI only copies fields off the bill. The rules below decide the verdict, so the AI can't approve a bill by itself.</p>
+        <input type="file" id="photo" accept="image/*">
+        <label for="ocrText">…or paste the bill's text</label>
+        <textarea id="ocrText" placeholder="Paste text from the bill or a UPI screen"></textarea>
+        <div class="row" style="margin-top:8px"><button class="btn small" id="readAI">Read the bill</button><span class="small muted" id="aiStatus"></span></div>
+      </details>
+    </div>
+    <p class="hint" id="noAI" hidden>Photo reading needs Claude, which isn't on in this view. Typing it in takes about a minute.</p>
+  </div>
+
+  <div id="verdict" class="verdict v-NOT_CLAIMABLE"></div>
+
+  <div class="card">
+    <form id="billForm" autocomplete="off">
+      <details open><summary>The bill</summary>
+        <div class="grid2">
+          <div><label>What kind of paper is it?</label>
+            <select name="docType">
+              <option value="tax_invoice">Printed GST tax invoice</option>
+              <option value="plain_bill">Printed bill / signed receipt</option>
+              <option value="handwritten">Handwritten (kacha) bill</option>
+              <option value="upi_screenshot">Only a UPI / payment screenshot</option>
+              <option value="online_order">Online order invoice</option>
+              <option value="other">Estimate / something else</option>
+            </select></div>
+          <div><label>Bill / receipt number</label><input type="text" name="invoiceNo"></div>
+          <div><label>Bill date</label><input type="text" name="date" placeholder="DD/MM/YYYY"></div>
+          <div><label>Total on the bill (₹)</label><input type="text" name="amount" inputmode="decimal"></div>
+        </div>
+        <label>What it's for</label><input type="text" name="description" placeholder="e.g. Open-mic slot, 4 performers">
+        <div class="grid2">
+          <div><label>Goods or service?</label>
+            <select name="category"><option value="service">Service (fee, rent, travel)</option><option value="goods">Goods (things you keep or use up)</option></select></div>
+          <div><label>Stock type (goods only)</label>
+            <select name="stockType"><option value="">—</option><option value="consumable">Consumable</option><option value="non-consumable">Non-consumable</option><option value="ltas">LTAS</option></select></div>
+        </div>
+        <label>Buyer name written on the bill</label><input type="text" name="billedTo" placeholder="Students' Gymkhana, IIT Kanpur (club)">
+      </details>
+      <details open><summary>The vendor</summary>
+        <div class="grid2">
+          <div><label>Vendor name</label><input type="text" name="vendorName"></div>
+          <div><label>Vendor address</label><input type="text" name="vendorAddress"></div>
+          <div><label>Registered under GST?</label>
+            <select name="gstRegistered"><option value="">Don't know</option><option value="yes">Yes</option><option value="no">No</option></select></div>
+          <div><label>GSTIN (if printed)</label><input type="text" name="gstin" placeholder="15 characters"></div>
+        </div>
+        <label class="tick"><input type="checkbox" name="gstCharged"> GST is charged on the bill</label>
+        <label class="tick"><input type="checkbox" name="unregDeclaration"> Vendor wrote "Not registered under GST" and signed</label>
+        <label class="tick"><input type="checkbox" name="signedByVendor"> Vendor signed / stamped the bill</label>
+      </details>
+      <details open><summary>How you paid</summary>
+        <div class="grid2">
+          <div><label>Paid by</label><select name="paymentMode"><option value="upi">UPI</option><option value="cash">Cash</option><option value="card">Card</option></select></div>
+          <div><label>Amount actually paid (₹)</label><input type="text" name="paidAmount" inputmode="decimal"></div>
+          <div><label>UTR / UPI reference</label><input type="text" name="paymentRef" inputmode="numeric"></div>
+          <div><label>Paid from whose account</label><input type="text" name="payerName"></div>
+        </div>
+        <label class="tick"><input type="checkbox" name="bankExtract"> I have the bank statement line / bank SMS</label>
+        <label>Who is claiming the money back</label><input type="text" name="claimant">
+      </details>
+    </form>
+    <div class="row" style="margin-top:12px"><button class="btn" id="addPacket">Add to event packet</button></div>
+  </div>
+</section>
+
+<!-- 3. EVENT PACKET -->
+<section id="packet">
+  <div class="card">
+    <h2>Event packet</h2>
+    <p class="hint">Everything the coordinator needs for one event's SG-2 bill-clearance file, in one place.</p>
+    <label>Event</label><input type="text" id="eventName" placeholder="e.g. Lucknow open mic, Mar 2026">
+    <div class="kpi" id="kpi"></div>
+    <div id="claims"></div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn small" id="copySG">Copy SG-2 line items</button>
+      <button class="btn small ghost" id="loadDemoPacket">Load a sample event</button>
+      <button class="btn small ghost" id="clearPacket">Clear packet</button>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Who has the file now?</h2>
+    <p class="hint">Sign-offs as listed on the IITK SG-2 and Direct Payment forms. Our file got lost between people over the summer, so this tracks where it is.</p>
+    <div class="steps" id="steps"></div>
+    <div class="row" style="margin-top:10px"><button class="btn small" id="nextStep">File moved to next person</button><button class="btn small ghost" id="returned">File returned to us</button></div>
+    <p class="small muted" id="stepNote"></p>
+  </div>
+</section>
+
+<!-- EVALS -->
+<section id="evals">
+  <div class="card">
+    <h2>Evals</h2>
+    <p class="hint">These run the app's own checking code against test bills, right here in your browser. Expected answers were written from the rules of the process, before seeing what the code said.</p>
+    <div class="row"><button class="btn" id="runRules">Run rule evals (63 cases)</button><button class="btn ghost" id="runAI" hidden>Run AI reading evals (10 bills)</button></div>
+    <div class="kpi" id="evalKpi"></div>
+    <div id="evalOut"></div>
+  </div>
+  <div class="card">
+    <h3>What the evals caught while building</h3>
+    <table>
+      <tr><th>Run</th><th>Score</th><th>What failed, and the fix</th></tr>
+      <tr><td>v1</td><td>53/58</td><td>Bills with no buyer name passed. "₹4,000" read as no amount. 05/12/2026 not seen as a future date. Online orders told you to "ask the vendor". Organisers of unknown GST status were assumed unregistered.</td></tr>
+      <tr><td>v2</td><td>58/58</td><td>Fixed all five. Then wrote 5 new cases to check I hadn't just fitted the tests.</td></tr>
+      <tr><td>v3</td><td>61/63</td><td>"Rs. 4,000.00" broke the amount parser. A two-digit year (14-03-26) was silently accepted.</td></tr>
+      <tr><td>v4</td><td>63/63</td><td>Fixed both. Unclear dates are now flagged instead of guessed.</td></tr>
+    </table>
+  </div>
+</section>
+
+<footer>
+  Rules come from the public IIT Kanpur Students' Gymkhana forms (SG-1, SG-2, DOSA-SG 101), our own returned packet, and a few assumptions. Each rule says which. Not an official Gymkhana tool. Check with the Gymkhana office before relying on it.<br>
+  Data stays in this browser. Nothing is uploaded unless you use the AI reader.
+</footer>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>window.PAKKA_GSTINS = {"valid": ["09KEMPC8159B3Z5", "07GBCHN1318N1ZX", "27SDHTB9960H1ZM", "29REJHE8194R3ZE", "06FDSTU3518W1ZW", "33SBTCP8657S2ZI", "19LJHCW3194Q2ZH", "24KXOFT1186F2ZG", "08EPNPV1895K3ZQ", "32LTPTZ7114P3Z8"], "invalid": ["09KEMPC8159B3Z4", "07GBCHN1318N1Z3", "27SDHTB9960H1ZJ", "29REJHE8194R3ZT", "06FDSTU3518W1ZI", "33SBTCP8657S2ZP", "19LJHCW3194Q2", "24KXOFT1186F2XG", "09ABCDE12345Z1Z5", "08ENPPV1895K3ZQ"]};</script>
+<script>// Pakka Bill — rule engine. Same file runs in the browser and in Node (evals).
+(function (root) {
+  const CH = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+  function gstinChecksumOk(g) {
+    if (!g) return false;
+    g = String(g).toUpperCase().replace(/\s/g, "");
+    if (!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(g)) return false;
+    let sum = 0;
+    for (let i = 0; i < 14; i++) {
+      const p = CH.indexOf(g[i]) * (i % 2 === 0 ? 1 : 2);
+      sum += Math.floor(p / 36) + (p % 36);
+    }
+    return CH[(36 - (sum % 36)) % 36] === g[14];
+  }
+
+  // Each rule: source = "form" (IITK SG form field), "experience" (ELS, 2025-26), "assumption".
+  const RULES = [
+    { code: "PROOF_OF_PAYMENT_ONLY", sev: "block", source: "experience",
+      test: b => b.docType === "upi_screenshot",
+      why: "A UPI screenshot proves you paid. It doesn't prove what you bought or from whom.",
+      fix: "Ask the vendor now for a bill or a signed receipt with their name, date, item and amount." },
+    { code: "NO_INVOICE_NO", sev: "block", source: "form",
+      test: b => b.docType !== "upi_screenshot" && !nz(b.invoiceNo),
+      why: "SG forms ask for an invoice/bill number for every line.",
+      fix: "Ask the vendor to write a bill or receipt number on it before you leave." },
+    { code: "NO_DATE", sev: "block", source: "form",
+      test: b => !nz(b.date),
+      why: "SG forms ask for the bill date.",
+      fix: "Get the date written on the bill." },
+    { code: "DATE_UNCLEAR", sev: "warn", source: "assumption",
+      test: b => nz(b.date) && !validIso(b.date),
+      why: "The date can't be read for sure (e.g. a two-digit year).",
+      fix: "Ask for the full date, DD/MM/YYYY." },
+    { code: "FUTURE_DATE", sev: "block", source: "assumption",
+      test: (b, ctx) => nz(b.date) && validIso(b.date) && b.date > ctx.today,
+      why: "A bill dated in the future will be returned.",
+      fix: "Ask the vendor to correct the date to today." },
+    { code: "NO_VENDOR", sev: "block", source: "form",
+      test: b => !nz(b.vendorName),
+      why: "The office can't verify a bill with no seller name.",
+      fix: "Get the shop/organiser name written or stamped on it." },
+    { code: "NO_VENDOR_ADDRESS", sev: "warn", source: "assumption",
+      test: b => nz(b.vendorName) && !nz(b.vendorAddress),
+      why: "Bills without a seller address are often questioned.",
+      fix: "Ask them to add their address or a stamp." },
+    { code: "GSTIN_MISSING", sev: "block", source: "experience",
+      test: b => b.gstCharged === true && !nz(b.gstin),
+      why: "GST is charged on the bill but there's no GSTIN. This is what sank our Lucknow claim.",
+      fix: "Ask for their GSTIN on the bill. If they aren't registered, they shouldn't be charging GST: ask for a corrected bill." },
+    { code: "GSTIN_INVALID", sev: "block", source: "assumption",
+      test: b => nz(b.gstin) && !gstinChecksumOk(b.gstin),
+      why: "This GSTIN fails the checksum, so it's mistyped or fake.",
+      fix: "Re-check the GSTIN with the vendor (their GST certificate or board)." },
+    { code: "UNREGISTERED_NEEDS_DECLARATION", sev: "warn", source: "assumption",
+      test: b => b.gstRegistered === false && b.gstCharged !== true && !b.unregDeclaration,
+      why: "Small vendors below the GST limit legally can't give a GST invoice. Don't chase one. Get a receipt the office can still verify.",
+      fix: "Get a signed receipt with their phone/PAN and one line: 'Not registered under GST'." },
+    { code: "HANDWRITTEN", sev: "warn", source: "assumption",
+      test: b => b.docType === "handwritten",
+      why: "Handwritten (kacha) bills are accepted less often.",
+      fix: "Ask for a printed bill. If they only have a pad, get a stamp and signature on it." },
+    { code: "NOT_BILLED_TO_CLUB", sev: "warn", source: "assumption",
+      test: b => !nz(b.billedTo) || !/(gymkhana|club|society|council|iit\s*k|iitk|els|literary)/i.test(b.billedTo),
+      why: "The buyer on the bill is missing or is a person, not the club.",
+      fix: "Ask them to write 'Students' Gymkhana, IIT Kanpur (club name)' as the buyer." },
+    { code: "NO_DESCRIPTION", sev: "block", source: "form",
+      test: b => !nz(b.description),
+      why: "SG forms need 'details of goods/service'.",
+      fix: "Get the item or service written on the bill." },
+    { code: "NO_STOCK_TYPE", sev: "warn", source: "form",
+      test: b => b.category === "goods" && !nz(b.stockType),
+      why: "Goods go in the stock register as Consumable, Non-consumable or LTAS. Ours was returned for this.",
+      fix: "Pick the stock type now (food/flex = consumable; mic, speaker = non-consumable)." },
+    { code: "NO_AMOUNT", sev: "block", source: "form",
+      test: b => !(Number(b.amount) > 0),
+      why: "No readable amount.",
+      fix: "Get the total written clearly." },
+    { code: "NO_PAYMENT_PROOF", sev: "block", source: "experience",
+      test: b => b.paymentMode !== "cash" && !nz(b.paymentRef) && !b.bankExtract,
+      why: "No UTR/UPI reference or bank statement extract. Our packet came back for this too.",
+      fix: "Screenshot the UPI success screen now (with UTR) and save the bank SMS." },
+    { code: "CASH_NO_RECEIPT_SIGNATURE", sev: "warn", source: "assumption",
+      test: b => b.paymentMode === "cash" && !b.signedByVendor,
+      why: "Cash leaves no trail except the vendor's signature.",
+      fix: "Get the vendor to sign 'Received ₹__ in cash' on the bill." },
+    { code: "AMOUNT_MISMATCH", sev: "block", source: "assumption",
+      test: b => Number(b.paidAmount) > 0 && Number(b.amount) > 0 && Math.abs(Number(b.paidAmount) - Number(b.amount)) > 1,
+      why: "The amount paid doesn't match the bill total.",
+      fix: "Ask for a bill for the exact amount you paid, or a separate receipt for the difference." },
+    { code: "PAYER_NOT_CLAIMANT", sev: "warn", source: "assumption",
+      test: b => nz(b.payerName) && nz(b.claimant) && norm(b.payerName) !== norm(b.claimant),
+      why: "Someone else's account paid, but you are claiming.",
+      fix: "File the claim in the name of whoever's account paid." },
+  ];
+
+  function validIso(d) { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d); return !!m && +m[2] >= 1 && +m[2] <= 12 && +m[3] >= 1 && +m[3] <= 31; }
+  function nz(v) { return v !== undefined && v !== null && String(v).trim() !== ""; }
+  function norm(s) { return String(s).toLowerCase().replace(/[^a-z]/g, ""); }
+
+  function duplicateIssue(b, packet) {
+    if (!packet || !packet.length) return null;
+    const hit = packet.find(p => p.id !== b.id && (
+      (nz(b.invoiceNo) && nz(p.invoiceNo) && norm(p.vendorName) === norm(b.vendorName) && String(p.invoiceNo).trim() === String(b.invoiceNo).trim()) ||
+      (norm(p.vendorName) === norm(b.vendorName) && Number(p.amount) === Number(b.amount) && p.date === b.date)));
+    if (!hit) return null;
+    return { code: "DUPLICATE", sev: "block", source: "assumption",
+      why: "Looks like a bill already in this event's packet (" + (hit.vendorName || "") + ", ₹" + hit.amount + ").",
+      fix: "Remove one. A duplicate gets the whole packet returned." };
+  }
+
+  function money(v) {
+    if (v === undefined || v === null) return NaN;
+    if (typeof v === "number") return v;
+    const t = String(v).replace(/(rs\.?|inr|₹|\/-)/gi, "").replace(/,/g, "");
+    const m = t.match(/\d+(\.\d+)?/);
+    return m ? Number(m[0]) : NaN;
+  }
+  function isoDate(v) {
+    if (!nz(v)) return v;
+    const s = String(v).trim();
+    let m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);   // Indian DD/MM/YYYY
+    if (m) return m[3] + "-" + m[2].padStart(2, "0") + "-" + m[1].padStart(2, "0");
+    m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if (m) return m[1] + "-" + m[2].padStart(2, "0") + "-" + m[3].padStart(2, "0");
+    return s;
+  }
+  function normalise(b) {
+    const n = Object.assign({}, b);
+    n.amount = money(b.amount); n.paidAmount = money(b.paidAmount); n.date = isoDate(b.date);
+    return n;
+  }
+
+  function check(bill, packet, ctx) {
+    bill = normalise(bill || {});
+    packet = (packet || []).map(normalise);
+    ctx = ctx || {};
+    ctx.today = ctx.today || new Date().toISOString().slice(0, 10);
+    const issues = [];
+    for (const r of RULES) {
+      try { if (r.test(bill, ctx)) issues.push({ code: r.code, sev: r.sev, source: r.source, why: r.why, fix: r.fix }); }
+      catch (e) { /* a broken rule must never crash the check */ }
+    }
+    const d = duplicateIssue(bill, packet);
+    if (d) issues.push(d);
+    const verdict = issues.some(i => i.sev === "block") ? "NOT_CLAIMABLE" : issues.length ? "RISKY" : "PAKKA";
+    return { verdict, issues };
+  }
+
+  // Counter checklist: what to get BEFORE you pay.
+  function counterChecklist(spend, vendor, mode) {
+    const items = [];
+    const sayHi = [], sayEn = [];
+    if (spend === "online") {
+      items.push({ code: "DOWNLOAD_INVOICE", text: "Download the tax invoice PDF from the order page (not the order confirmation email)." });
+      items.push({ code: "SHIP_TO_CLUB", text: "Put the club's name in the billing name before you place the order." });
+      sayEn.push("No one to ask here: the invoice is on the order page, usually under 'Download invoice'.");
+      sayHi.push("Yahan kisi se maangna nahi hai: order page par 'Download invoice' se bill milega.");
+    } else if (vendor === "organiser") {
+      items.push({ code: "ASK_GST_STATUS", text: "Ask first: are they GST-registered? If yes, get a GST invoice. If not, get a signed receipt with a 'Not registered under GST' line." });
+      sayHi.push("Aap GST mein registered ho? Ho to GST bill de dijiye, nahi to apne naam, phone aur sign ke saath receipt likh dijiye ki GST registered nahi hain.");
+      sayEn.push("Are you GST-registered? If yes, please give a GST invoice. If not, a signed receipt with your name and phone, saying you're not registered, is fine.");
+    } else if (vendor === "registered") {
+      items.push({ code: "ASK_TAX_INVOICE", text: "Ask for a printed GST tax invoice (not a token or estimate)." });
+      items.push({ code: "CHECK_GSTIN", text: "Check their GSTIN is printed on it (15 characters)." });
+      sayHi.push("Bhaiya, GST wala pakka bill dena, GST number ke saath.");
+      sayEn.push("Could you give me a GST invoice with your GST number on it?");
+    } else {
+      items.push({ code: "ASK_SIGNED_RECEIPT", text: "They may not be GST-registered. Don't argue for a GST bill. Ask for a signed receipt with name, phone, date, item and amount." });
+      items.push({ code: "ASK_DECLARATION", text: "Ask them to add one line: 'Not registered under GST', with signature." });
+      sayHi.push("GST bill nahi hai to koi baat nahi. Bas apne naam, phone aur sign ke saath ek receipt likh do, aur likh do ki GST mein registered nahi ho.");
+      sayEn.push("If you don't have a GST bill that's fine. Please write a receipt with your name, phone number and signature, and note that you're not GST-registered.");
+    }
+    if (spend !== "online") items.push({ code: "BILL_TO_CLUB", text: "Buyer name on the bill: 'Students' Gymkhana, IIT Kanpur (club name)', not your name." });
+    if (spend === "performance" || spend === "registration") {
+      items.push({ code: "WRITE_SERVICE", text: "Make sure it says what the fee is for (e.g. 'Open-mic performance slot, 2 performers, 14 Mar')." });
+    } else if (spend !== "travel") {
+      items.push({ code: "ITEMISE", text: "Items and quantities listed, not just a total." });
+    }
+    if (spend === "travel") {
+      items.push({ code: "TRAVEL_TICKET", text: "Keep the ticket/booking PDF and the trip receipt (from-to, date, fare)." });
+    }
+    if (mode === "upi" || mode === "card") {
+      items.push({ code: "SAVE_UTR", text: "Screenshot the payment success screen with the UTR/reference number before you close the app." });
+    } else {
+      items.push({ code: "CASH_SIGNATURE", text: "Paying cash: get 'Received ₹___ in cash' signed on the bill." });
+    }
+    items.push({ code: "PHOTO_NOW", text: "Photograph the bill here at the counter and check it in Pakka Bill before you walk away." });
+    const photo = items.pop();
+    return { items: items.slice(0, 5).concat([photo]), sayHi: sayHi.join(" "), sayEn: sayEn.join(" ") };
+  }
+
+  const api = { check, counterChecklist, gstinChecksumOk, RULES };
+  if (typeof module !== "undefined" && module.exports) module.exports = api; else root.PakkaRules = api;
+})(this);
+</script>
+<script>// Pakka Bill evals. Expected results were written from the rules of the process, not from the code's output.
+const G = (typeof require !== "undefined") ? require("./gstins.json") : window.PAKKA_GSTINS;
+const V = G.valid;
+const TODAY = "2026-11-21";
+
+// a clean base bill, then each case changes one thing
+function base(over) {
+  return Object.assign({
+    id: "x", docType: "tax_invoice", invoiceNo: "INV-204", date: "2026-03-14",
+    vendorName: "Shukla Printers", vendorAddress: "Kalyanpur, Kanpur", gstRegistered: true, gstCharged: true,
+    gstin: V[0], billedTo: "Students' Gymkhana, IIT Kanpur (ELS)", description: "Flex banner 6x3 ft, 2 nos",
+    category: "goods", stockType: "consumable", amount: 1180, paidAmount: 1180, paymentMode: "upi",
+    paymentRef: "608412345678", payerName: "Aryavart Dahiya", claimant: "Aryavart Dahiya", signedByVendor: true
+  }, over || {});
+}
+const lucknowService = {
+  docType: "plain_bill", invoiceNo: "R-17", vendorName: "Open mic organiser, Lucknow", vendorAddress: "Hazratganj, Lucknow",
+  gstRegistered: false, gstCharged: false, gstin: "", unregDeclaration: true, description: "Open-mic performance slot, 4 performers",
+  category: "service", stockType: "", amount: 4000, paidAmount: 4000
+};
+
+const SUITE_A = [
+  { id: "A01", name: "Our real Lucknow case: only a UPI acknowledgement, no bank extract",
+    bill: base({ docType: "upi_screenshot", invoiceNo: "", vendorName: "Open mic organiser, Lucknow", vendorAddress: "", gstRegistered: false, gstCharged: false, gstin: "", billedTo: "", description: "Open mic registration", category: "service", stockType: "", amount: 4000, paidAmount: 4000, paymentRef: "" }),
+    verdict: "NOT_CLAIMABLE", must: ["PROOF_OF_PAYMENT_ONLY", "NO_PAYMENT_PROOF"] },
+  { id: "A02", name: "Lucknow done right: signed receipt + 'not GST-registered' line + UTR",
+    bill: base(lucknowService), verdict: "PAKKA", mustNot: ["GSTIN_MISSING", "NO_STOCK_TYPE"] },
+  { id: "A03", name: "Clean GST invoice for goods", bill: base(), verdict: "PAKKA" },
+  { id: "A04", name: "GST charged, GSTIN missing", bill: base({ gstin: "" }), verdict: "NOT_CLAIMABLE", must: ["GSTIN_MISSING"] },
+  { id: "A05", name: "GSTIN with wrong check digit", bill: base({ gstin: G.invalid[0] }), verdict: "NOT_CLAIMABLE", must: ["GSTIN_INVALID"] },
+  { id: "A06", name: "Valid GSTIN typed in lowercase with spaces", bill: base({ gstin: V[1].toLowerCase().replace(/(.{5})/, "$1 ") }), verdict: "PAKKA" },
+  { id: "A07", name: "Unregistered vendor, no declaration: warn, never ask for a GSTIN",
+    bill: base(Object.assign({}, lucknowService, { unregDeclaration: false })), verdict: "RISKY", must: ["UNREGISTERED_NEEDS_DECLARATION"], mustNot: ["GSTIN_MISSING"] },
+  { id: "A08", name: "Handwritten bill otherwise fine", bill: base({ docType: "handwritten" }), verdict: "RISKY", must: ["HANDWRITTEN"] },
+  { id: "A09", name: "Bill made out to the student, not the club", bill: base({ billedTo: "Aryavart Dahiya" }), verdict: "RISKY", must: ["NOT_BILLED_TO_CLUB"] },
+  { id: "A10", name: "Goods without stock type", bill: base({ stockType: "" }), verdict: "RISKY", must: ["NO_STOCK_TYPE"] },
+  { id: "A11", name: "Service without stock type is fine", bill: base({ category: "service", stockType: "", description: "Sound system rental, 1 evening" }), verdict: "PAKKA", mustNot: ["NO_STOCK_TYPE"] },
+  { id: "A12", name: "UPI paid, no UTR and no bank extract", bill: base({ paymentRef: "" }), verdict: "NOT_CLAIMABLE", must: ["NO_PAYMENT_PROOF"] },
+  { id: "A13", name: "UPI paid, no UTR but bank extract attached", bill: base({ paymentRef: "", bankExtract: true }), verdict: "PAKKA" },
+  { id: "A14", name: "Cash, vendor didn't sign", bill: base({ paymentMode: "cash", paymentRef: "", signedByVendor: false }), verdict: "RISKY", must: ["CASH_NO_RECEIPT_SIGNATURE"], mustNot: ["NO_PAYMENT_PROOF"] },
+  { id: "A15", name: "Paid ₹3,500 against a ₹4,000 bill", bill: base({ amount: 4000, paidAmount: 3500 }), verdict: "NOT_CLAIMABLE", must: ["AMOUNT_MISMATCH"] },
+  { id: "A16", name: "50 paise rounding difference is fine", bill: base({ amount: 1180, paidAmount: 1179.5 }), verdict: "PAKKA" },
+  { id: "A17", name: "Friend's UPI paid, I'm claiming", bill: base({ payerName: "Rohan Verma" }), verdict: "RISKY", must: ["PAYER_NOT_CLAIMANT"] },
+  { id: "A18", name: "Same name, different spacing/case", bill: base({ payerName: "aryavart  DAHIYA" }), verdict: "PAKKA" },
+  { id: "A19", name: "Bill dated in the future", bill: base({ date: "2026-12-05" }), verdict: "NOT_CLAIMABLE", must: ["FUTURE_DATE"] },
+  { id: "A20", name: "Same invoice already in the packet", bill: base({ id: "new" }), packet: [base({ id: "old" })], verdict: "NOT_CLAIMABLE", must: ["DUPLICATE"] },
+  { id: "A21", name: "Same shop, same amount, different day: not a duplicate", bill: base({ id: "new", date: "2026-03-20", invoiceNo: "INV-260" }), packet: [base({ id: "old" })], verdict: "PAKKA", mustNot: ["DUPLICATE"] },
+  { id: "A22", name: "Two different shops both use bill no. 1", bill: base({ id: "new", invoiceNo: "1" }), packet: [base({ id: "old", invoiceNo: "1", vendorName: "Gupta Sweets", amount: 600, date: "2026-03-14" })], verdict: "PAKKA", mustNot: ["DUPLICATE"] },
+  { id: "A23", name: "Empty form", bill: { id: "e" }, verdict: "NOT_CLAIMABLE", must: ["NO_DATE", "NO_VENDOR", "NO_AMOUNT", "NO_DESCRIPTION"] },
+  { id: "A24", name: "Buyer written as 'IIT Kanpur ELS' counts as the club", bill: base({ billedTo: "IIT Kanpur ELS" }), verdict: "PAKKA" },
+  { id: "A25", name: "No buyer name on the bill at all", bill: base({ billedTo: "" }), verdict: "RISKY", must: ["NOT_BILLED_TO_CLUB"] },
+  { id: "A26", name: "Charges GST but says not registered", bill: base({ gstRegistered: false, gstCharged: true, gstin: "" }), verdict: "NOT_CLAIMABLE", must: ["GSTIN_MISSING"] },
+  { id: "A27", name: "Amount comes in as text '₹4,000' (as the AI may return it)", bill: base(Object.assign({}, lucknowService, { amount: "₹4,000", paidAmount: "4000" })), verdict: "PAKKA", mustNot: ["NO_AMOUNT", "AMOUNT_MISMATCH"] },
+  { id: "A28", name: "Indian date format 14/03/2026", bill: base({ date: "14/03/2026" }), verdict: "PAKKA" },
+  { id: "A29", name: "Future date in Indian format 05/12/2026", bill: base({ date: "05/12/2026" }), verdict: "NOT_CLAIMABLE", must: ["FUTURE_DATE"] },
+  { id: "A30", name: "Online order tax invoice (e.g. marketplace)", bill: base({ docType: "online_order", vendorName: "Online marketplace seller", gstin: V[2] }), verdict: "PAKKA" },
+  // Round 2: written after v2 passed, to catch overfitting
+  { id: "A31", name: "Two-digit year 14-03-26 can't be read reliably", bill: base({ date: "14-03-26" }), verdict: "RISKY", must: ["DATE_UNCLEAR"] },
+  { id: "A32", name: "Amount written 'Rs. 4,000.00'", bill: base(Object.assign({}, lucknowService, { amount: "Rs. 4,000.00" })), verdict: "PAKKA", mustNot: ["NO_AMOUNT", "AMOUNT_MISMATCH"] },
+  { id: "A33", name: "Registered vendor, no GST charged (bill of supply)", bill: base({ gstCharged: false }), verdict: "PAKKA" },
+  { id: "A34", name: "Vendor name is just spaces", bill: base({ vendorName: "   " }), verdict: "NOT_CLAIMABLE", must: ["NO_VENDOR"] },
+  { id: "A35", name: "Amount '4000/-' (common on handwritten receipts)", bill: base(Object.assign({}, lucknowService, { amount: "4000/-" })), verdict: "PAKKA" },
+];
+
+const SUITE_B = [
+  { id: "B01", name: "Performance fee, small organiser, UPI (Lucknow)", args: ["performance", "unregistered", "upi"],
+    must: ["ASK_SIGNED_RECEIPT", "ASK_DECLARATION", "WRITE_SERVICE", "SAVE_UTR", "BILL_TO_CLUB", "PHOTO_NOW"], mustNot: ["ASK_TAX_INVOICE"] },
+  { id: "B02", name: "Shop purchase, GST shop, cash", args: ["shop", "registered", "cash"], must: ["ASK_TAX_INVOICE", "CHECK_GSTIN", "ITEMISE", "CASH_SIGNATURE", "PHOTO_NOW"] },
+  { id: "B03", name: "Local travel, UPI", args: ["travel", "registered", "upi"], must: ["TRAVEL_TICKET", "SAVE_UTR", "PHOTO_NOW"], mustNot: ["ITEMISE"] },
+  { id: "B04", name: "Food from a dhaba, cash", args: ["food", "unregistered", "cash"], must: ["ASK_SIGNED_RECEIPT", "ITEMISE", "CASH_SIGNATURE", "PHOTO_NOW"] },
+  { id: "B05", name: "Printing at a GST shop, UPI", args: ["printing", "registered", "upi"], must: ["ASK_TAX_INVOICE", "ITEMISE", "SAVE_UTR"] },
+  { id: "B06", name: "Online order, card: nobody to 'ask', download the invoice", args: ["online", "registered", "card"], must: ["DOWNLOAD_INVOICE", "SAVE_UTR"], mustNot: ["ASK_TAX_INVOICE", "CHECK_GSTIN"] },
+  { id: "B07", name: "Event organiser, GST status unknown", args: ["registration", "organiser", "upi"], must: ["ASK_GST_STATUS", "SAVE_UTR", "WRITE_SERVICE"] },
+  { id: "B08", name: "Every checklist ≤ 6 items and ends with the photo step", all: true },
+];
+
+function runAll(R) {
+  const out = { A: [], B: [], C: [] };
+  for (const c of SUITE_A) {
+    const r = R.check(c.bill, c.packet || [], { today: TODAY });
+    const codes = r.issues.map(i => i.code);
+    const miss = (c.must || []).filter(x => !codes.includes(x));
+    const extra = (c.mustNot || []).filter(x => codes.includes(x));
+    const pass = r.verdict === c.verdict && !miss.length && !extra.length;
+    out.A.push({ id: c.id, name: c.name, pass, expected: c.verdict, got: r.verdict, codes, miss, extra });
+  }
+  const combos = [];
+  for (const s of ["performance", "registration", "food", "printing", "travel", "shop", "online"])
+    for (const v of ["registered", "unregistered", "organiser"]) for (const m of ["upi", "cash", "card"]) combos.push([s, v, m]);
+  for (const c of SUITE_B) {
+    if (c.all) {
+      const bad = combos.filter(a => { const l = R.counterChecklist(...a).items; return l.length > 6 || l[l.length - 1].code !== "PHOTO_NOW"; });
+      out.B.push({ id: c.id, name: c.name, pass: !bad.length, note: bad.length ? bad.length + " of " + combos.length + " combos fail, e.g. " + bad[0].join("/") : combos.length + " combos ok" });
+      continue;
+    }
+    const codes = R.counterChecklist(...c.args).items.map(i => i.code);
+    const miss = (c.must || []).filter(x => !codes.includes(x));
+    const extra = (c.mustNot || []).filter(x => codes.includes(x));
+    out.B.push({ id: c.id, name: c.name, pass: !miss.length && !extra.length, codes, miss, extra });
+  }
+  G.valid.forEach((g, i) => out.C.push({ id: "C" + String(i + 1).padStart(2, "0"), name: "valid " + g, pass: R.gstinChecksumOk(g) === true }));
+  G.invalid.forEach((g, i) => out.C.push({ id: "C" + String(i + 11).padStart(2, "0"), name: "invalid " + g, pass: R.gstinChecksumOk(g) === false }));
+  return out;
+}
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { runAll, SUITE_A, SUITE_B };
+  if (require.main === module) {
+    const R = require("./rules.js");
+    const o = runAll(R);
+    for (const k of ["A", "B", "C"]) {
+      const p = o[k].filter(x => x.pass).length;
+      console.log(`Suite ${k}: ${p}/${o[k].length}`);
+      o[k].filter(x => !x.pass).forEach(x => console.log("  FAIL", x.id, x.name, JSON.stringify({ exp: x.expected, got: x.got, miss: x.miss, extra: x.extra, note: x.note })));
+    }
+  }
+} else { window.PakkaEvals = { runAll, SUITE_A, SUITE_B }; }
+</script>
+<script>// Suite D: AI extraction. Text versions of real-looking Indian bills (as OCR would see them).
+// Scored on 6 key fields. "Trap" cases check the model returns null instead of inventing a GSTIN/invoice no.
+(function (root) {
+const SUITE_D = [
+ { id: "D01", name: "Printed GST invoice, print shop",
+   text: "SHUKLA DIGITAL PRINTERS\nShop 4, Kalyanpur Crossing, Kanpur 208017\nGSTIN: 09KEMPC8159B3Z5\nTAX INVOICE   Inv No: SDP/2526/0412   Date: 14/03/2026\nBill To: Students Gymkhana IIT Kanpur (ELS)\nFlex banner 6x3 ft  2 x 500 = 1000.00\nCGST 9% 90.00  SGST 9% 90.00\nGrand Total Rs 1,180.00\nPaid by UPI",
+   expect: { docType: "tax_invoice", invoiceNo: "SDP/2526/0412", date: "2026-03-14", gstin: "09KEMPC8159B3Z5", gstCharged: true, amount: 1180 } },
+ { id: "D02", name: "UPI success screen only (our Lucknow case)",
+   text: "Payment Successful\n₹4,000\nPaid to LUCKNOW OPEN MIC COLLECTIVE\nUPI ID: lkoopenmic@okaxis\n14 Mar 2026, 6:42 pm\nUPI transaction ID 608412345678\nFrom: Aryavart Dahiya - SBI xx4471",
+   expect: { docType: "upi_screenshot", invoiceNo: null, date: "2026-03-14", gstin: null, gstCharged: false, amount: 4000 } },
+ { id: "D03", name: "Handwritten receipt from a small vendor",
+   text: "[handwritten] Sharma Tent House\nNo. 37   Date 2/2/26\nM/s ELS IIT Kanpur\n20 chairs + 1 table, 1 day   1600/-\nReceived with thanks\nsd/- R. Sharma",
+   expect: { docType: "handwritten", invoiceNo: "37", date: "2026-02-02", gstin: null, gstCharged: false, amount: 1600 } },
+ { id: "D04", name: "TRAP: smudged GSTIN, must not be guessed",
+   text: "GUPTA SWEETS & CATERERS\nGSTIN: 09AB?DE12[smudge]1Z?\nBill No 2231  Dt 21-03-2026\nSamosa 60 pcs, Tea 60 cups\nTotal (incl GST 5%) 1,260",
+   expect: { docType: "tax_invoice", invoiceNo: "2231", date: "2026-03-21", gstin: null, gstCharged: true, amount: 1260 } },
+ { id: "D05", name: "Online order invoice",
+   text: "Tax Invoice/Bill of Supply/Cash Memo\n(Original for Recipient)\nSold By: RK World Infocom Pvt Ltd\nGST Registration No: 07GBCHN1318N1ZX\nInvoice Number: DEL4-118273\nInvoice Date: 05.08.2026\nBilling Address: English Literary Society, Students Gymkhana, IIT Kanpur\nBoya wireless mic x1   Total: ₹1,499.00",
+   expect: { docType: "online_order", invoiceNo: "DEL4-118273", date: "2026-08-05", gstin: "07GBCHN1318N1ZX", gstCharged: true, amount: 1499 } },
+ { id: "D06", name: "Restaurant bill with service charge",
+   text: "THE CHAI STORY, Hazratganj, Lucknow\nGSTIN 09AAKFC4471M1ZY\nKOT 88  Bill#: 4471   14/03/2026 20:10\n4 x Masala Chai 120\n2 x Maggi 180\nSub total 300.00  Service charge 5% 15.00  CGST 2.5% 7.88  SGST 2.5% 7.88\nNet Amount 330.76  Round off 331",
+   expect: { docType: "tax_invoice", invoiceNo: "4471", date: "2026-03-14", gstin: "09AAKFC4471M1ZY", gstCharged: true, amount: 331 } },
+ { id: "D07", name: "Organiser's signed receipt, not GST-registered (Lucknow done right)",
+   text: "LUCKNOW OPEN MIC COLLECTIVE\n12, Hazratganj, Lucknow | 98xxxxxx21\nReceipt No. R-17    Date: 14 March 2026\nReceived from: English Literary Society, Students' Gymkhana, IIT Kanpur\nTowards: Open-mic performance slot, 4 performers\nAmount: Rs. 4,000/- (Rupees Four Thousand only) via UPI ref 608412345678\nWe are not registered under GST.\nSign: A. Mehra (Organiser)",
+   expect: { docType: "plain_bill", invoiceNo: "R-17", date: "2026-03-14", gstin: null, gstCharged: false, amount: 4000 } },
+ { id: "D08", name: "TRAP: estimate, not a bill, no number",
+   text: "ESTIMATE / QUOTATION\nKanpur Sound Services\nSound system 1 evening: 3500\nLights: 1500\nTotal approx 5000\nAdvance 2000 recd",
+   expect: { docType: "other", invoiceNo: null, date: null, gstin: null, gstCharged: false, amount: 5000 } },
+ { id: "D09", name: "Cab trip receipt",
+   text: "Your Trip Receipt\nThanks for riding, Aryavart\nTotal ₹ 612.40\nTrip date: Sat, 14 Mar 2026\nCharbagh Railway Station → Hazratganj\nInvoice No. RD/2026/LKO/00981221\nPaid via UPI",
+   expect: { docType: ["online_order", "other", "plain_bill"], invoiceNo: "RD/2026/LKO/00981221", date: "2026-03-14", gstin: null, gstCharged: false, amount: 612.4 } },
+ { id: "D10", name: "Hindi-English mixed shop bill",
+   text: "श्री बालाजी स्टेशनरी / Shri Balaji Stationery\nGSTIN 09KEMPC8159B3Z5\nबिल नं / Bill No: 908   दिनांक 03/09/2026\nA4 paper 2 rim, chart paper 20, marker 10\nकुल / Total: 1,045",
+   expect: { docType: "tax_invoice", invoiceNo: "908", date: "2026-09-03", gstin: "09KEMPC8159B3Z5", gstCharged: true, amount: 1045 } },
+];
+const KEYS = ["docType", "invoiceNo", "date", "gstin", "gstCharged", "amount"];
+function same(k, a, b) {
+  if (Array.isArray(b)) return b.includes(a);
+  if (b === null) return a === null || a === undefined || a === "";
+  if (k === "amount") return Math.abs(Number(a) - Number(b)) < 1;
+  if (k === "gstCharged") return Boolean(a) === b;
+  if (k === "gstin" || k === "invoiceNo") return String(a || "").replace(/\s/g, "").toUpperCase() === String(b).toUpperCase();
+  return String(a) === String(b);
+}
+function score(c, got) {
+  const fields = KEYS.map(k => ({ k, ok: same(k, got[k], c.expect[k]), got: got[k], exp: c.expect[k] }));
+  const invented = (c.expect.gstin === null && got.gstin) || (c.expect.invoiceNo === null && got.invoiceNo);
+  return { fields, correct: fields.filter(f => f.ok).length, invented: !!invented };
+}
+const api = { SUITE_D, KEYS, score };
+if (typeof module !== "undefined" && module.exports) module.exports = api; else root.PakkaAIEvals = api;
+})(this);
+</script>
+<script>(function () {
+const R = window.PakkaRules, $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const SOURCE = { form: "IITK form", experience: "our returned packet", assumption: "assumption" };
+const VERDICT = {
+  PAKKA: ["Pakka. Good to file.", "Nothing in this bill should bounce the packet."],
+  RISKY: ["Claimable, but risky", "Fix these while you're still at the counter if you can."],
+  NOT_CLAIMABLE: ["Not claimable yet", "This bill will come back. Fix it before you leave the vendor."]
+};
+const STEPS = ["Club coordinator", "Council General Secretary", "Faculty Counsellor", "Finance Convener (FC)", "Gymkhana Office", "DOSA Office, payment"];
+
+// ---------- storage (one browser only; page works without it) ----------
+let S = { claims: [], event: "", step: 0, stepSince: "", returns: 0 };
+try { const raw = localStorage.getItem("pakka.v1"); if (raw) S = Object.assign(S, JSON.parse(raw)); } catch (e) {}
+function save() { try { localStorage.setItem("pakka.v1", JSON.stringify(S)); } catch (e) {} }
+function toast(t) { const el = $("#toast"); el.textContent = t; el.classList.add("on"); setTimeout(() => el.classList.remove("on"), 1800); }
+async function copy(text) { try { await navigator.clipboard.writeText(text); toast("Copied"); } catch (e) { toast("Couldn't copy here. Select and copy manually."); } }
+const today = () => new Date().toISOString().slice(0, 10);
+const rupee = n => "₹" + Number(n || 0).toLocaleString("en-IN");
+
+// ---------- tabs ----------
+function show(t) {
+  $$("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.t === t));
+  $$("section").forEach(s => s.classList.toggle("on", s.id === t));
+  if (t === "packet") renderPacket();
+}
+$$("#tabs button").forEach(b => b.onclick = () => show(b.dataset.t));
+
+// ---------- 1. before you pay ----------
+const pick = { spend: null, vendor: null, mode: null };
+$$(".chips").forEach(g => g.querySelectorAll(".chip").forEach(c => c.onclick = () => {
+  g.querySelectorAll(".chip").forEach(x => x.classList.remove("on")); c.classList.add("on");
+  pick[g.dataset.g] = c.dataset.v;
+  if (pick.spend === "online") { pick.vendor = pick.vendor || "registered"; }
+  renderPay();
+}));
+let lastPay = null;
+function renderPay() {
+  if (!pick.spend || !pick.mode || (!pick.vendor && pick.spend !== "online")) return;
+  const out = R.counterChecklist(pick.spend, pick.vendor || "registered", pick.mode);
+  lastPay = out;
+  $("#payList").innerHTML = out.items.map(i => `<li>${esc(i.text)}</li>`).join("");
+  $$("#payList li").forEach(li => li.onclick = () => li.classList.toggle("done"));
+  $("#sayHi").textContent = out.sayHi; $("#sayEn").textContent = out.sayEn;
+  $("#payOut").hidden = false;
+}
+$("#copyPay").onclick = () => lastPay && copy("Before you pay, get these (Pakka Bill):\n" + lastPay.items.map((i, n) => (n + 1) + ". " + i.text).join("\n") + "\n\nSay: " + lastPay.sayHi);
+$("#goCheck").onclick = () => show("check");
+
+// ---------- 2. check a bill ----------
+const F = $("#billForm");
+function readForm() {
+  const b = {}; const fd = new FormData(F);
+  for (const el of F.elements) { if (!el.name) continue; b[el.name] = el.type === "checkbox" ? el.checked : (fd.get(el.name) || "").trim(); }
+  b.gstRegistered = b.gstRegistered === "yes" ? true : b.gstRegistered === "no" ? false : undefined;
+  if (b.paidAmount === "") delete b.paidAmount;
+  return b;
+}
+function fillForm(b) {
+  F.reset();
+  for (const el of F.elements) {
+    if (!el.name || !(el.name in b)) continue;
+    let v = b[el.name];
+    if (el.name === "gstRegistered") v = v === true ? "yes" : v === false ? "no" : "";
+    if (el.type === "checkbox") el.checked = !!v; else el.value = v == null ? "" : v;
+  }
+  renderVerdict();
+}
+let editingId = null;
+function renderVerdict() {
+  const b = readForm();
+  const others = S.claims.filter(c => c.id !== editingId).map(c => c.bill);
+  const r = R.check(Object.assign({ id: editingId || "draft" }, b), others);
+  const [h, sub] = VERDICT[r.verdict];
+  $("#verdict").className = "verdict v-" + r.verdict;
+  $("#verdict").innerHTML = `<div class="big">${h}</div><div>${sub}</div>` + r.issues
+    .map((x, i) => [x, i]).sort((p, q) => (p[0].sev === q[0].sev ? p[1] - q[1] : p[0].sev === "block" ? -1 : 1)).map(p => p[0])
+    .map(i => `<div class="issue"><div class="t">${esc(i.why)}<span class="tag ${i.sev}">${i.sev === "block" ? "will bounce" : "risky"}</span><span class="tag">${SOURCE[i.source]}</span></div><div class="fix"><b>Fix now:</b> ${esc(i.fix)}</div></div>`).join("");
+  return r;
+}
+F.addEventListener("input", renderVerdict); F.addEventListener("change", renderVerdict);
+
+const DEMO_BAD = { docType: "upi_screenshot", invoiceNo: "", date: "14/03/2026", amount: "4000", description: "Open mic registration", category: "service", stockType: "", billedTo: "", vendorName: "Open mic organiser, Lucknow", vendorAddress: "", gstRegistered: undefined, gstin: "", gstCharged: false, unregDeclaration: false, signedByVendor: false, paymentMode: "upi", paidAmount: "4000", paymentRef: "", payerName: "Volunteer", claimant: "Volunteer", bankExtract: false };
+const DEMO_GOOD = { docType: "plain_bill", invoiceNo: "R-17", date: "14/03/2026", amount: "4000", description: "Open-mic performance slot, 4 performers", category: "service", stockType: "", billedTo: "English Literary Society, Students' Gymkhana, IIT Kanpur", vendorName: "Open mic organiser, Lucknow", vendorAddress: "Hazratganj, Lucknow", gstRegistered: false, gstin: "", gstCharged: false, unregDeclaration: true, signedByVendor: true, paymentMode: "upi", paidAmount: "4000", paymentRef: "608412345678", payerName: "Volunteer", claimant: "Volunteer", bankExtract: true };
+$("#demoBad").onclick = () => { editingId = null; fillForm(DEMO_BAD); };
+$("#demoGood").onclick = () => { editingId = null; fillForm(DEMO_GOOD); };
+$("#clearBill").onclick = () => { editingId = null; F.reset(); renderVerdict(); };
+$("#addPacket").onclick = () => {
+  const b = readForm(); const r = renderVerdict();
+  if (!b.vendorName && !b.amount) { toast("Fill in at least the vendor and amount"); return; }
+  const id = editingId || ("c" + Date.now());
+  const claim = { id, bill: Object.assign({ id }, b), verdict: r.verdict, issues: r.issues.map(i => i.code), added: S.claims.find(c => c.id === id)?.added || today() };
+  S.claims = S.claims.filter(c => c.id !== id).concat([claim]); save(); editingId = null;
+  toast(r.verdict === "PAKKA" ? "Added. This one's pakka." : "Added, with open issues"); show("packet");
+};
+
+// ---------- AI reading (optional) ----------
+let sample = null;
+const EXTRACT = `You are reading a single Indian bill/receipt/payment screenshot for a student club's reimbursement. Return ONLY JSON with these keys:
+docType ("tax_invoice" | "plain_bill" | "handwritten" | "upi_screenshot" | "online_order" | "other"),
+invoiceNo, date (YYYY-MM-DD), vendorName, vendorAddress, gstin, gstCharged (true/false), billedTo, description, amount (number, final total in ₹), paymentRef (UTR/UPI ref if visible).
+Use null for anything not clearly visible. Do not guess a GSTIN or invoice number. Do not judge whether the bill is valid.`;
+async function extract(text, images) {
+  const input = EXTRACT + "\n\nBILL:\n" + (text || "(see attached image)");
+  const opts = { modelTier: "quick", cache: false }; if (images) opts.images = images;
+  const res = await sample(input, opts);
+  const m = res.text.match(/\{[\s\S]*\}/); if (!m) throw new Error("no JSON");
+  return JSON.parse(m[0]);
+}
+$("#readAI").onclick = async () => {
+  const file = $("#photo").files[0], text = $("#ocrText").value.trim();
+  if (!file && !text) { toast("Add a photo or paste text"); return; }
+  $("#readAI").disabled = true; $("#aiStatus").textContent = "Reading…";
+  try {
+    const x = await extract(text, file ? [file] : null);
+    const cur = readForm();
+    fillForm(Object.assign(cur, Object.fromEntries(Object.entries(x).filter(([k, v]) => v !== null && v !== undefined)),
+      { gstCharged: !!x.gstCharged, paidAmount: cur.paidAmount || (x.amount != null ? String(x.amount) : "") }));
+    $("#aiStatus").textContent = "Filled in. Check the fields: the AI can misread.";
+  } catch (e) { $("#aiStatus").textContent = e && e.code === "rate_limited" ? "Busy, try again in a bit." : "Couldn't read it. Type it in instead."; }
+  $("#readAI").disabled = false;
+};
+
+// ---------- 3. packet ----------
+function renderPacket() {
+  $("#eventName").value = S.event || "";
+  const c = S.claims, ready = c.filter(x => x.verdict === "PAKKA").length;
+  const total = c.reduce((s, x) => s + (Number(String(x.bill.amount).replace(/[^0-9.]/g, "")) || 0), 0);
+  const byPerson = {}; c.forEach(x => { const p = x.bill.claimant || "?"; byPerson[p] = (byPerson[p] || 0) + (Number(String(x.bill.amount).replace(/[^0-9.]/g, "")) || 0); });
+  $("#kpi").innerHTML = `<div><b>${rupee(total)}</b><span class="small muted">owed back</span></div><div><b>${ready}/${c.length}</b><span class="small muted">bills pakka</span></div><div><b>${Object.keys(byPerson).length}</b><span class="small muted">people waiting</span></div>`;
+  if (!c.length) { $("#claims").innerHTML = `<p class="muted small">No bills yet. Check one in tab 2 and add it, or load a sample event.</p>`; return renderSteps(); }
+  $("#claims").innerHTML = c.map(x => {
+    const days = Math.max(0, Math.round((Date.now() - new Date(x.added).getTime()) / 864e5));
+    return `<div class="claim"><div class="cmain"><b>${esc(x.bill.vendorName || "—")}</b> · ${rupee(Number(String(x.bill.amount).replace(/[^0-9.]/g, "")))}<div class="small muted">${esc(x.bill.description || "")}</div><div class="small muted">Paid by ${esc(x.bill.claimant || "—")} · waiting ${days} day${days === 1 ? "" : "s"}</div></div><div class="cside"><span class="pill p-${x.verdict}">${x.verdict === "NOT_CLAIMABLE" ? "will bounce" : x.verdict.toLowerCase()}</span>${x.issues.length ? `<div class="small muted">${x.issues.length} issue${x.issues.length > 1 ? "s" : ""}</div>` : ""}<button class="btn small ghost" data-edit="${x.id}">Open</button></div></div>`;
+  }).join("") + packetLine(c);
+  $$("[data-edit]").forEach(b => b.onclick = () => { const x = S.claims.find(c => c.id === b.dataset.edit); editingId = x.id; fillForm(x.bill); show("check"); });
+  renderSteps();
+}
+$("#eventName").oninput = e => { S.event = e.target.value; save(); };
+function packetLine(c) {
+  const bad = c.filter(x => x.verdict === "NOT_CLAIMABLE").length, risky = c.filter(x => x.verdict === "RISKY").length;
+  if (bad) return `<p class="small" style="color:var(--red);margin:8px 0 0">Don't submit yet: ${bad} bill${bad > 1 ? "s" : ""} will send the whole file back${risky ? `, and ${risky} more ${risky > 1 ? "are" : "is"} risky` : ""}.</p>`;
+  if (risky) return `<p class="small" style="color:var(--amber);margin:8px 0 0">${risky} bill${risky > 1 ? "s are" : " is"} risky. Fix if you can before starting the signatures.</p>`;
+  return `<p class="small" style="color:var(--green);margin:8px 0 0">Every bill is pakka. Safe to start the signatures.</p>`;
+}
+function renderSteps() {
+  $("#steps").innerHTML = STEPS.map((s, i) => `<div class="step ${i < S.step ? "done" : i === S.step ? "now" : ""}"><span class="dot"></span>${s}${i === S.step && S.stepSince ? ` <span class="small muted">· since ${S.stepSince}</span>` : ""}</div>`).join("");
+  $("#stepNote").textContent = S.returns ? `Returned ${S.returns} time${S.returns > 1 ? "s" : ""} so far. Each return restarts the signatures.` : "";
+}
+$("#nextStep").onclick = () => { if (S.step < STEPS.length - 1) { S.step++; S.stepSince = today(); save(); renderSteps(); } };
+$("#returned").onclick = () => { S.step = 0; S.stepSince = today(); S.returns = (S.returns || 0) + 1; save(); renderSteps(); toast("Back to the coordinator. Fix the flagged bills first."); };
+$("#clearPacket").onclick = () => { S = { claims: [], event: "", step: 0, stepSince: "", returns: 0 }; save(); renderPacket(); };
+$("#loadDemoPacket").onclick = () => {
+  const mk = (id, b, added) => { const bill = Object.assign({ id }, b); const r = R.check(bill, []); return { id, bill, verdict: r.verdict, issues: r.issues.map(i => i.code), added }; };
+  S.event = "Lucknow open mic, Mar 2026 (sample)";
+  S.claims = [
+    mk("s1", Object.assign({}, DEMO_BAD, { gstRegistered: undefined, payerName: "Volunteer A", claimant: "Volunteer A" }), "2026-03-14"),
+    mk("s2", { docType: "online_order", invoiceNo: "TRN-55120931", date: "2026-03-13", amount: "1240", description: "Train tickets Kanpur–Lucknow, 4 people", category: "service", billedTo: "ELS, Students' Gymkhana IIT Kanpur", vendorName: "Railway booking (online)", vendorAddress: "Online", gstRegistered: undefined, gstCharged: false, paymentMode: "upi", paidAmount: "1240", paymentRef: "607199283311", payerName: "Aryavart Dahiya", claimant: "Aryavart Dahiya", signedByVendor: false }, "2026-03-13"),
+    mk("s3", { docType: "tax_invoice", invoiceNo: "4471", date: "2026-03-14", amount: "331", description: "Tea and snacks after the show", category: "goods", stockType: "", billedTo: "", vendorName: "Chai stall, Hazratganj", vendorAddress: "Hazratganj, Lucknow", gstRegistered: true, gstCharged: true, gstin: "09AAKFC4471M1ZY", paymentMode: "upi", paidAmount: "331", paymentRef: "608400112233", payerName: "Volunteer B", claimant: "Volunteer B", signedByVendor: false }, "2026-03-14")
+  ];
+  S.step = 0; S.stepSince = ""; S.returns = 0; save(); renderPacket();
+};
+$("#copySG").onclick = () => {
+  if (!S.claims.length) { toast("No bills yet"); return; }
+  const lines = S.claims.map((x, i) => [i + 1, x.bill.invoiceNo || "MISSING", x.bill.date || "MISSING", x.bill.description || "", x.bill.category === "goods" ? (x.bill.stockType || "STOCK TYPE?") : "Service", x.bill.amount].join(" | "));
+  const tot = S.claims.reduce((s, x) => s + (Number(String(x.bill.amount).replace(/[^0-9.]/g, "")) || 0), 0);
+  copy(`Event: ${S.event || "-"}\nS.No | Bill no | Date | Details | Stock type | Amount (Rs)\n${lines.join("\n")}\nTotal: Rs ${tot}\n\nAttach for each line: bill/receipt + payment proof (UTR screenshot or bank statement line).`);
+};
+
+// ---------- evals ----------
+$("#runRules").onclick = () => {
+  const o = window.PakkaEvals.runAll(R);
+  const all = [...o.A, ...o.B, ...o.C], p = all.filter(x => x.pass).length;
+  $("#evalKpi").innerHTML = `<div><b>${p}/${all.length}</b><span class="small muted">passed</span></div><div><b>${o.A.filter(x => x.pass).length}/${o.A.length}</b><span class="small muted">bill verdicts</span></div><div><b>${o.B.filter(x => x.pass).length}/${o.B.length}</b><span class="small muted">counter checklists</span></div><div><b>${o.C.filter(x => x.pass).length}/${o.C.length}</b><span class="small muted">GSTIN checks</span></div>`;
+  const row = x => `<tr><td>${x.id}</td><td>${esc(x.name)}${x.got ? `<div class="small muted">expected ${x.expected}, got ${x.got}${x.codes && x.codes.length ? " · flags: " + x.codes.join(", ") : ""}</div>` : x.note ? `<div class="small muted">${esc(x.note)}</div>` : ""}</td><td class="${x.pass ? "pass" : "fail"}">${x.pass ? "pass" : "FAIL"}</td></tr>`;
+  $("#evalOut").innerHTML = `<h3>A · Bill verdicts</h3><table>${o.A.map(row).join("")}</table><h3>B · Counter checklists</h3><table>${o.B.map(row).join("")}</table><h3>C · GSTIN checksum</h3><table>${o.C.map(row).join("")}</table>`;
+};
+$("#runAI").onclick = async () => {
+  const D = window.PakkaAIEvals; $("#runAI").disabled = true; $("#evalOut").innerHTML = "<p class='muted'>Reading 10 bills…</p>";
+  const rows = []; let fields = 0, invented = 0, perfect = 0;
+  for (const c of D.SUITE_D) {
+    try { const got = await extract(c.text); const s = D.score(c, got); fields += s.correct; invented += s.invented ? 1 : 0; perfect += s.correct === D.KEYS.length ? 1 : 0;
+      rows.push(`<tr><td>${c.id}</td><td>${esc(c.name)}<div class="small muted">${s.fields.filter(f => !f.ok).map(f => `${f.k}: expected ${JSON.stringify(f.exp)}, got ${JSON.stringify(f.got)}`).join(" · ") || "all 6 fields right"}</div></td><td class="${s.correct === 6 && !s.invented ? "pass" : "fail"}">${s.correct}/6${s.invented ? " · INVENTED" : ""}</td></tr>`);
+    } catch (e) { rows.push(`<tr><td>${c.id}</td><td>${esc(c.name)}</td><td class="fail">error</td></tr>`); }
+    $("#evalOut").innerHTML = `<table>${rows.join("")}</table>`;
+  }
+  $("#evalKpi").innerHTML = `<div><b>${fields}/${D.SUITE_D.length * 6}</b><span class="small muted">fields right</span></div><div><b>${perfect}/${D.SUITE_D.length}</b><span class="small muted">bills fully right</span></div><div><b>${invented}</b><span class="small muted">invented GSTIN / bill no.</span></div>`;
+  $("#runAI").disabled = false;
+};
+
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+renderVerdict();
+// light up AI when this view can ask Claude
+(async () => {
+  try {
+    if (!window.claude || !window.claude.use) throw 0;
+    sample = await window.claude.use("sample");
+    if (!sample) throw 0;
+    let imgs = false; try { imgs = !!(await sample.limits()).images; } catch (e) {}
+    if (!imgs) $("#photo").hidden = true;
+    $("#aiBox").hidden = false; $("#runAI").hidden = false;
+  } catch (e) { $("#noAI").hidden = false; }
+})();
+})();
+</script>
+</body>
+</html>
