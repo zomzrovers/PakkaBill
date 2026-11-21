@@ -900,7 +900,7 @@ $("#readAI").onclick = async () => {
     const cur = readForm();
     fillForm(Object.assign(cur, Object.fromEntries(Object.entries(x).filter(([k, v]) => v !== null && v !== undefined)),
       { gstCharged: !!x.gstCharged, paidAmount: cur.paidAmount || (x.amount != null ? String(x.amount) : "") }));
-    $("#aiStatus").textContent = "Filled in. Check each field, the AI can misread.";
+    $("#aiStatus").textContent = x.gstCharged == null ? "Filled in. The AI couldn't tell whether GST is charged, so check that box yourself." : "Filled in. Check each field, the AI can misread.";
   } catch (e) { $("#aiStatus").textContent = e && e.code === "rate_limited" ? "Too many requests. Try again in a minute." : "Couldn't read that bill. Type it in instead."; }
   $("#readAI").disabled = false;
 };
